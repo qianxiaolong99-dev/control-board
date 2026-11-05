@@ -20,7 +20,7 @@
 #define PAGE_4_SLEEPING  4
 
 
- //vis p0,0 隐藏，vis p0,1 显示。 */
+/* USART HMI：vis pN,0 隐藏；vis pN,1 显示。 */
 #define ICON_HIDE 0
 #define ICON_DISP 1
 
@@ -148,14 +148,15 @@ static uchar TjcBuildPage(uchar *out, uchar page)
     return TjcAppendEnd(out, used);
 }
 
-/* component 是 p0..p10 中的数字部分。图片 ID 用十进制 ASCII：
+/* component 是 p 后面的数字部分，可取 uchar 范围 0..255；
+ * 具体 p 编号是否存在由当前页面的控件配置决定。图片 ID 用十进制 ASCII：
  * 图片 7 要发送字符 '7' (0x37)，而不是原始数值字节 0x07。 */
 //给指定图片控件生成一条“切换图片”的完整指令。例如“让控件 p10 显示图片资源 74”，它会生成 p10.pic=74，再加三个原始 0xFF。
 //就是将十六进制/十进制的数值component/picture 转为ASCII 也就是十进制1 就是写入ASCII值得1  主要还是10进制的 16进制也可以转但是有歧义
 static uchar TjcBuildPicture(uchar *out, uchar component, uchar picture)
 {
     uchar used;
-    if (out == 0 || component > 10 || picture > 74) return 0;
+    if (out == 0 || picture > 74) return 0;
     used = TjcAppendText(out, 0, "p");//写入P字符
     if (used == 0) return 0;
     used = TjcAppendDecimal(out, used, component);//假如是十六进制/十进制的数值转为ASCII 也就是十进制1 就是写入ASCII值得1
@@ -172,12 +173,16 @@ static uchar TjcBuildPicture(uchar *out, uchar component, uchar picture)
 static uchar TjcBuildVisibility(uchar *out, uchar component, uchar hidden)
 {
     uchar used;
-    if (out == 0 || component > 10 || hidden > 1) return 0;
+    /* component 不设人为上限；hidden 必须是业务定义的 0 或 1。 */
+    if (out == 0 || (hidden != ICON_HIDE && hidden != ICON_DISP)) return 0;
     used = TjcAppendText(out, 0, "vis p");
     if (used == 0) return 0;
     used = TjcAppendDecimal(out, used, component);
     if (used == 0) return 0;
-    used = TjcAppendText(out, used, hidden == ICON_HIDE ? ",0" : ",1");
+    used = TjcAppendText(out, used, ",");
+    if (used == 0) return 0;
+    /* ICON_HIDE=0、ICON_DISP=1，直接写入 vis 指令的同值参数。 */
+    used = TjcAppendDecimal(out, used, hidden);
     return TjcAppendEnd(out, used);
 }
 
