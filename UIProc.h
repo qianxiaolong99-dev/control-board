@@ -43,7 +43,7 @@ typedef struct {
 
 /* 这些全局变量需在后续移植 UIProc.c 时各定义一次。 */
 extern volatile TFT_Content_TypeDef g_xTftContent;
-extern volatile uchar g_cGapTempr;
+extern volatile uchar g_cGapTempr; //// 保存温差或由温差换算得到的 UI 数值；volatile 表示其他模块可能随时更新它。
 
 /* 图片资源 ID，并非控件 ID。当前 TFT.HMI 中资源范围为 0..74。
  * 保留原状态机中“基准图片号+数值”的计算方式。 */
@@ -194,21 +194,30 @@ void vSwitchTftPage(uchar pageNum);
 void vSwitchImageIcon(uchar id, uchar icon);
 void vHideDisplayID(uchar id, uchar hd);
 
-typedef enum {
-    UPDIdle,
-    SwchPage,
-    UpdSetTempr,
-    UpdCurTempr,
-    UpdBtIcon,
-    UpdKeepWarmIcon,
-    UpdUnitIcon,
-    UpdDogIcon,
-    UpdSleepIcon,
-    SelSetItem,
-    UpdSetVal
+///*============================== UI 刷新动作枚举 ============================*/
+/*
+枚举把一组动作名称映射成整数，便于 switch 判断。
+形象例子：g_xTftAction 像一张“下一项工作单”，写着“切页、更新当前温度、更新蓝牙图标”等任务。
+没有手工指定数值时，C 会从 0 开始依次编号。
+*/
+
+typedef enum {// 开始定义 UI 刷新动作枚举类型。
+    UPDIdle,  // 值 0：空闲，不执行屏幕刷新。
+    SwchPage,// 值 1：根据系统状态切换页面。
+    UpdSetTempr,// 值 2：更新工作页的设定温度。
+    UpdCurTempr,// 值 3：更新工作页的当前温度，并可能更新小球和蓝牙状态。
+    UpdBtIcon,// 值 4：只更新蓝牙图标。
+    UpdKeepWarmIcon,// 值 5：只更新保温图标。
+    UpdUnitIcon,// 值 6：刷新温度单位；在 UIProc.c 中也承担工作页的一次性全量刷新。
+    UpdDogIcon,// 值 7：只更新小狗图标。
+    UpdSleepIcon,// 值 8：更新睡眠页动画图片。
+    SelSetItem,// 值 9：更新设置项目选择图片。
+    UpdSetVal // 值 10：更新当前设置项目对应的设置值图片。
 } UPD_ACTION_Typedef;
 
-extern volatile UPD_ACTION_Typedef g_xTftAction;
-void UpdateTftDisplay(void);
+extern volatile UPD_ACTION_Typedef g_xTftAction;// 当前等待执行的 UI 动作；主循环调用 UpdateTftDisplay() 后按此值进入相应分支。
+                                           // 例：状态机写入 UpdBtIcon，下一次 UI 刷新就只处理蓝牙图标。
+                                           // 注意：它是单个动作槽，不是队列；新动作覆盖旧动作时，旧动作可能来不及执行。
+void UpdateTftDisplay(void);              //// 声明 UI 总刷新函数；主循环反复调用它，根据 g_xTftAction 每次处理一种刷新动作。
 
 #endif /* _UI_PROCESS_H_ */
