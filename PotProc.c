@@ -94,12 +94,10 @@ void vBtConnectProc(void)
 // 【逐行解释｜原第36行】只有系统处于WAITING等待状态或HEATING加热状态时，才处理工作页面上的蓝牙图标，因为设置页、睡眠页可能没有这个图标。
 		{
 // 【逐行解释｜原第37行】WAITING/HEATING条件成立后的代码块开始。
-			if(g_xTftContent.BtOnOff == 1)//图标是隐藏的
-// 【逐行解释｜原第38行】检查BtOnOff是否等于1。按本工程约定，1表示图标隐藏，0表示图标显示；因此这里是在确认“连接已成功但图标仍隐藏”。
+			if(g_xTftContent.BtOnOff == ICON_HIDE) // connected: show Bluetooth
 			{
 // 【逐行解释｜原第39行】需要显示蓝牙图标的分支开始。
-				g_xTftContent.BtOnOff = 0;//置位显示BT图标
-// 【逐行解释｜原第40行】把BtOnOff改成0，要求TFT显示蓝牙图标。注意这里只修改显示数据，还没有立即发送串口命令。
+				g_xTftContent.BtOnOff = ICON_DISP; // 1: show
 				g_xTftAction = UpdBtIcon;//更新蓝牙图标
 // 【逐行解释｜原第41行】把下一项TFT任务设为UpdBtIcon；主循环下一次执行UpdateTftDisplay()时，才会真正发送蓝牙图标显隐指令。
 				bQueueEn(Tim5STrig);
@@ -154,12 +152,10 @@ void vBtConnectProc(void)
 // 【逐行解释｜原第67行】仍然只在WAITING或HEATING工作页面状态下更新蓝牙图标。
 		{
 // 【逐行解释｜原第68行】工作页面状态判断块开始。
-			if(0==g_xTftContent.BtOnOff)//BT图标显示状态
-// 【逐行解释｜原第69行】检查BtOnOff是否为0。0表示图标当前显示，所以断线后需要把它改为隐藏。
+			if(g_xTftContent.BtOnOff == ICON_DISP) // disconnected: hide Bluetooth
 			{
 // 【逐行解释｜原第70行】蓝牙图标当前显示的处理块开始。
-				g_xTftContent.BtOnOff = 1;//隐藏
-// 【逐行解释｜原第71行】把BtOnOff设为1，要求隐藏蓝牙图标。
+				g_xTftContent.BtOnOff = ICON_HIDE; // 0: hide
 				g_xTftAction = UpdBtIcon;//更新蓝牙图标
 // 【逐行解释｜原第72行】安排UpdBtIcon显示任务；UpdateTftDisplay()稍后根据BtOnOff发送真正的TFT显隐命令。
 			}

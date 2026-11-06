@@ -27,6 +27,7 @@
 /* 显示状态结构保持与 KeyBoard/UIProc.h 相同，供原状态机继续使用。 */
 typedef struct {
     uchar Sleep:2;
+    /* 以下图标状态统一为 0=隐藏、1=显示，对应 vis 指令参数。 */
     uchar OldBtOnOff:1;
     uchar BtOnOff:1;
     uchar KWOnOff:1;
@@ -48,6 +49,7 @@ extern volatile uchar g_cGapTempr; //// 保存温差或由温差换算得到的 
 /* 图片资源 ID，并非控件 ID。当前 TFT.HMI 中资源范围为 0..74。
  * 保留原状态机中“基准图片号+数值”的计算方式。 */
 #define ICON_SETTING_DELTA       6
+#define ICON_SETTING2_DELTA      17
 #define ICON_P3_BIGNUM_DELTA     22
 #define ICON_P3P_BIGNUM_DELTA    32
 #define ICON_P3_SMNUM_DELTA      42
@@ -62,8 +64,7 @@ extern volatile uchar g_cGapTempr; //// 保存温差或由温差换算得到的 
 #define ICON_SET_30              12
 #define ICON_SET_60              13
 
-/* 原业务代码中的逻辑控件 ID，不能直接当作 USART HMI 的 p 编号。
- * 生成命令前，需要结合当前页面映射到实际控件名称。 */
+/* 当前 TFT.HMI 工作页的 p 编号；它们不是图片资源 ID。 */
 #define ICON_ID_DOG    9    // 工作页“小狗”控件 ID。
 #define ICON_ID_KW     7   // 工作页“保温”控件 ID。
 #define ICON_ID_BT     6   // 工作页“蓝牙”控件 ID。
@@ -83,7 +84,7 @@ extern volatile uchar g_cTftCommand[TJC_CMD_CAPACITY];
 
 
 //out：要写入的字节数组，例如 g_cTftCommand。 used：调用前已经写入多少字节。第一次写通常传 0。 text：要追加的文字，例如 "page "。
-static uchar TjcAppendText(uchar *out, uchar used, const char *text)
+static uchar TjcAppendText(volatile uchar *out, uchar used, const char *text)
 {
     while (*text != 0) {
         if (used >= TJC_CMD_CAPACITY - 3) return 0; //这里比较的是 used >= 29。末尾三个位置要留给 FF FF FF
@@ -97,7 +98,7 @@ static uchar TjcAppendText(uchar *out, uchar used, const char *text)
 //used：数组中已经写了多少字节，也就是下一次该写入的位置。
 //也就是把十进制数字/十六进制数字转换为ASCII码值 放入数组中
 //主要还是十进制 16进制有歧义  123就转换为字符123 
-static uchar TjcAppendDecimal(uchar *out, uchar used, uchar value)
+static uchar TjcAppendDecimal(volatile uchar *out, uchar used, uchar value)
 {
     //只有三位数才进入这里。`value / 100` 取出百位。例如 123 / 100 = 1，`'0' + 1` 得到字符 '1'。
     if (value >= 100) {
@@ -114,7 +115,7 @@ static uchar TjcAppendDecimal(uchar *out, uchar used, uchar value)
 }
 
 //最后添加终止帧
-static uchar TjcAppendEnd(uchar *out, uchar used)
+static uchar TjcAppendEnd(volatile uchar *out, uchar used)
 {
     if (used == 0 || used > TJC_CMD_CAPACITY - 3) return 0;
     out[used++] = TJC_END_BYTE;
@@ -128,7 +129,7 @@ static uchar TjcAppendEnd(uchar *out, uchar used)
 //列入TjcBuildPage(g_cTftCommand, PAGE_1_SETTING )
 //例如传入 PAGE_1_SETTING，它会在 out 数组中写入 page Setting1，再追加三个原始 0xFF。
 //out 指向存放指令的字节数组；`page` 是目标页面编号。函数返回完整指令的字节数，失败时返回 0。
-static uchar TjcBuildPage(uchar *out, uchar page)
+static uchar TjcBuildPage(volatile uchar *out, uchar page)
 {
     //name 用来指向页面名称字符串，例如 "Setting1"。`used` 记录数组目前写了多少字节。
     const char *name;
@@ -153,7 +154,7 @@ static uchar TjcBuildPage(uchar *out, uchar page)
  * 图片 7 要发送字符 '7' (0x37)，而不是原始数值字节 0x07。 */
 //给指定图片控件生成一条“切换图片”的完整指令。例如“让控件 p10 显示图片资源 74”，它会生成 p10.pic=74，再加三个原始 0xFF。
 //就是将十六进制/十进制的数值component/picture 转为ASCII 也就是十进制1 就是写入ASCII值得1  主要还是10进制的 16进制也可以转但是有歧义
-static uchar TjcBuildPicture(uchar *out, uchar component, uchar picture)
+static uchar TjcBuildPicture(volatile uchar *out, uchar component, uchar picture)
 {
     uchar used;
     if (out == 0 || picture > 74) return 0;
@@ -170,7 +171,7 @@ static uchar TjcBuildPicture(uchar *out, uchar component, uchar picture)
 /* 业务参数 ICON_HIDE 生成 vis pN,0；ICON_DISP 生成 vis pN,1。
  * vis 只作用于当前显示页面的控件。 */
 //生成 USART HMI 的控件显示或隐藏指令。它只把命令放进 out 数组，不负责串口发送。
-static uchar TjcBuildVisibility(uchar *out, uchar component, uchar hidden)
+static uchar TjcBuildVisibility(volatile uchar *out, uchar component, uchar hidden)
 {
     uchar used;
     /* component 不设人为上限；hidden 必须是业务定义的 0 或 1。 */
@@ -186,7 +187,7 @@ static uchar TjcBuildVisibility(uchar *out, uchar component, uchar hidden)
     return TjcAppendEnd(out, used);
 }
 
-/* 保留原业务函数名。后续 UIProc.c 应将逻辑 ID 映射为当前页的 p 控件，
+/* 保留原业务函数名。id 是当前页面 p 后面的数字。
  * 调用上面的构造函数，再以返回长度调用 vUart0Send()。
  * main.c 已按字节发送 g_cTftCommand 中的数据。 */
 void vUart0Send(uchar len);

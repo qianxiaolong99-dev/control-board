@@ -44,9 +44,9 @@ void vSleepStatus(void)
 		g_xTftContent.sEnFlash = 0;
 		
 		/*if(0<g_xSysSetting.KWTime)//保温图标
-			g_xTftContent.KWOnOff=0;//显
+			g_xTftContent.KWOnOff=ICON_DISP; // 1: show keep-warm icon
 		else
-			g_xTftContent.KWOnOff=1;//隐
+			g_xTftContent.KWOnOff=ICON_HIDE; // 0: hide keep-warm icon
 			*/
 		break;
 	default:
@@ -140,7 +140,7 @@ void vWaittingStatus(void)
 		//DispData[0] = 0x20;
 		g_eSysStatus = HEATING;//切换到加热状态
 		g_cSwch2SleepTime=0;
-		g_xTftContent.DogDorH = 1;//hide狗头
+		g_xTftContent.DogDorH = ICON_HIDE;//hide狗头
 		g_xTftContent.sEnFlash = 1;
 		bQueueEn(StartHeat);//启动加热的action
 		break;
@@ -197,7 +197,7 @@ void vHeatingStatus(void)
 		//DispData[0] = 0x00;
 		g_eSysStatus = WAITING;//切换到waitting状态
 		//停止加热;切换图标
-		g_xTftContent.DogDorH = 0;
+		g_xTftContent.DogDorH = ICON_DISP;
 		g_xTftAction = UpdDogIcon;
 		/*** IH部分 ***/
 		g_bKeepWarmFlag = 0;
@@ -262,9 +262,9 @@ void vSetting1Status(void)
 		g_eSysStatus = WAITING;		
 		g_xTftAction = SwchPage;		
 		if(0<g_xSysSetting.KWTime)
-			g_xTftContent.KWOnOff=0;//显
+			g_xTftContent.KWOnOff=ICON_DISP; // 1: show keep-warm icon
 		else
-			g_xTftContent.KWOnOff=1;//隐
+			g_xTftContent.KWOnOff=ICON_HIDE; // 0: hide keep-warm icon
 		break;
 	case OkKey://确定设置项或者值，不再闪烁
 		g_eSysStatus = SETTING2;
@@ -306,9 +306,9 @@ void vSetting2Status(void)
 		g_xTftAction = SwchPage;
 		
 		if(0<g_xSysSetting.KWTime)
-			g_xTftContent.KWOnOff=0;//显
+			g_xTftContent.KWOnOff=ICON_DISP; // 1: show keep-warm icon
 		else
-			g_xTftContent.KWOnOff=1;//隐
+			g_xTftContent.KWOnOff=ICON_HIDE; // 0: hide keep-warm icon
 		break;
 	case Tim5STrig://5S无操作触发退回到项设置
 	case OkKey://退出值设置,回到项选择
