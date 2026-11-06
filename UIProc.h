@@ -190,6 +190,8 @@ static uchar TjcBuildVisibility(volatile uchar *out, uchar component, uchar hidd
 /* 保留原业务函数名。id 是当前页面 p 后面的数字。
  * 调用上面的构造函数，再以返回长度调用 vUart0Send()。
  * main.c 已按字节发送 g_cTftCommand 中的数据。 */
+/* len 是完整命令的字节数，包含末尾三个原始 0xFF。
+ * 保留旧函数名；SHARE_UART1=1 时实际由 USART1 TX 发送。 */
 void vUart0Send(uchar len);
 void vSwitchTftPage(uchar pageNum);
 void vSwitchImageIcon(uchar id, uchar icon);

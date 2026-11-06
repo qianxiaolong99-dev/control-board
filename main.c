@@ -671,56 +671,38 @@ void vTimeLoop(void)//10ms  HavePOWER_flag
 
 //循环发送字符
 // 【逐行解释｜原第336行】分隔注释：下面是TFT串口的阻塞发送函数。
+// TFT command bytes are already built in g_cTftCommand by UIProc.c.
+// Keep the KeyBoard sender structure: SHARE_UART1 selects the actual port.
 void vUart0Send(uchar len)
-// 【逐行解释｜原第337行】定义函数vUart0Send()。把TFT命令缓冲区逐字节发出；SHARE_UART1=1时实际使用USART1的TXREG1。
 {
-// 【逐行解释｜原第338行】开始上一条函数、if、else、while、switch或case的代码块；直到匹配的右花括号前都属于vUart0Send中的该结构。
-	uint overT = 0;
-// 【逐行解释｜原第339行】定义16位超时计数器overT，避免硬件一直不空闲时陷入永久死循环。
-	uchar pos = 0;	
-// 【逐行解释｜原第340行】定义发送位置pos，从命令缓冲区第0字节开始。
-	while (1)
-// 【逐行解释｜原第341行】进入无限循环，直到发送完指定长度或超时后由break退出。
-	{
-// 【逐行解释｜原第342行】开始上一条函数、if、else、while、switch或case的代码块；直到匹配的右花括号前都属于vUart0Send中的该结构。
-		Delay(50);
-// 【逐行解释｜原第343行】执行短延时，让串口硬件有时间移出前一字节；Delay(50)的精确时间取决于delay实现。
-		#if SHARE_UART1
-// 【逐行解释｜原第344行】条件编译：SHARE_UART1非0时，TFT命令通过USART1发送。
-		if (TRMT1)
-// 【逐行解释｜原第345行】检查USART1发送移位寄存器是否为空。
-		{
-// 【逐行解释｜原第346行】开始上一条函数、if、else、while、switch或case的代码块；直到匹配的右花括号前都属于vUart0Send中的该结构。
-			TXREG1 = g_cTftCommand[pos++];//数据写入寄存器
-// 【逐行解释｜原第347行】把当前TFT命令字节写入TXREG1，并在写完后把pos加1。
-		}
-// 【逐行解释｜原第348行】结束当前代码块，程序返回vUart0Send的上一层结构继续执行。
-		#else
-// 【逐行解释｜原第349行】SHARE_UART1为0时编译下面的USART0发送方案。
-		if (TRMT0)
-// 【逐行解释｜原第350行】检查USART0发送移位寄存器是否为空。
-		{
-// 【逐行解释｜原第351行】开始上一条函数、if、else、while、switch或case的代码块；直到匹配的右花括号前都属于vUart0Send中的该结构。
-			TXREG0 = g_cTftCommand[pos++];//数据写入寄存器
-// 【逐行解释｜原第352行】把当前TFT命令字节写入TXREG0并移动位置。
-		}
-// 【逐行解释｜原第353行】结束当前代码块，程序返回vUart0Send的上一层结构继续执行。
-		#endif		
-// 【逐行解释｜原第354行】结束SHARE_UART1条件编译。
-		asm("clrwdt");
-// 【逐行解释｜原第355行】发送循环中清看门狗，避免长时间阻塞造成复位。
-		Delay(50);
-// 【逐行解释｜原第356行】再次短延时。
-		asm("clrwdt");
-// 【逐行解释｜原第357行】再次清看门狗。
-		overT++;
-// 【逐行解释｜原第358行】循环尝试次数加1。
-		if ((50 < overT) || (len <= pos))
-// 【逐行解释｜原第359行】若尝试超过50次或已发送pos达到len，就执行下一行退出。
-			break;
-// 【逐行解释｜原第360行】跳出while循环，发送函数结束。
-	}
-// 【逐行解释｜原第361行】结束当前代码块，程序返回vUart0Send的上一层结构继续执行。
+    uint overT = 0;
+    uchar pos = 0;
+
+    // len includes the three raw 0xFF command terminators.
+    if (len == 0 || len > TJC_CMD_CAPACITY) return;
+    while (1)
+    {
+        Delay(50);
+#if SHARE_UART1
+        if (TRMT1)
+        {
+            TXREG1 = g_cTftCommand[pos++];
+            overT = 0; // Count timeout from the latest byte, not the whole command.
+        }
+#else
+        if (TRMT0)
+        {
+            TXREG0 = g_cTftCommand[pos++];
+            overT = 0;
+        }
+#endif
+        asm("clrwdt");
+        Delay(50);
+        asm("clrwdt");
+        overT++;
+        if ((50 < overT) || (len <= pos))
+            break;
+    }
 }
 // 【逐行解释｜原第362行】结束当前代码块，程序返回vUart0Send的上一层结构继续执行。
 /*
